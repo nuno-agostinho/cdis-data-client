@@ -1,8 +1,10 @@
 FROM quay.io/cdis/golang:1.14-alpine as build-deps
 
 RUN apk update && apk add --no-cache git ca-certificates gcc musl-dev
+RUN apk update && apk add bash procps
 
-WORKDIR /go/src/github.com/uc-cdis/gen3-client
+ENV gen3=/go/src/github.com/uc-cdis/gen3-client
+WORKDIR ${gen3}
 
 COPY . .
 
@@ -17,10 +19,5 @@ RUN printf "package g3cmd\n\nconst (" >gen3-client/g3cmd/gitversion.go \
 #RUN go test -v github.com/uc-cdis/gen3-client/tests
 
 RUN go build -ldflags "-linkmode external -extldflags -static" -o bin/gen3-client
-
-# Store only the resulting binary in the final image
-# Resulting in significantly smaller docker image size
-FROM scratch
-COPY --from=build-deps /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build-deps /go/src/github.com/uc-cdis/gen3-client/bin/gen3-client /gen3-client
-ENTRYPOINT ["/gen3-client"]
+WORKDIR ${gen3}/bin
+ENV PATH=${PATH}:${gen3}/bin
